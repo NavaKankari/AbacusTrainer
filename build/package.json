@@ -1,0 +1,10 @@
+{
+  "name": "AbacusTrainer",
+  "description": "A simple game to help master the Abacus",
+  "version": "0.1.0",
+  "license": "MIT",
+  "devDependencies": {
+    "shelljs": "^0.3.0"
+  },
+  "repository": "https://github.com/AwesomeFunGame/AbacusTrainer.git"
+}
