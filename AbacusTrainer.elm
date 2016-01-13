@@ -5,24 +5,33 @@ import Svg.Attributes exposing (..)
 import Svg.Events exposing (..)
 import Color exposing (..)
 import Random exposing (..)
+import Window
 --import StartApp.Simple exposing( start )
 
-renderGUI : Signal.Address Action  -> Model -> Html.Html
-renderGUI picture_address current_state =
-    svg
-      [ width "2400", height "240", viewBox "0 0 2400 240", fill "lightGray"]
-      ( List.concat [ 
-        (ten_circles picture_address current_state)
-      , 
-        [
-          g [Svg.Events.onClick ( Signal.message picture_address ( ClickRed ) )]
+renderGUI : Signal.Address Action  -> ( Int, Int ) -> Model -> Html.Html
+renderGUI picture_address ( w, h ) current_state =
+    let 
+      boardWidth  = w |> toString 
+      boardHeight = Basics.max 240 h |> toString
+    in
+      svg
+        [ width boardWidth, height boardHeight, viewBox ( "0 0 " ++ boardWidth ++ " " ++ boardHeight ), fill "lightGray"]
+        ( List.concat [ 
+          (ten_circles picture_address current_state)
+        , 
           [
-            ( rect [ x "0", y "120",   width "120", height "120", rx "15", ry "15",  fill "red" ] []  )
-           ,( text' [ x "0", y "160", fontSize "55" ] [ text ( toString ( 1 + ( fst current_state.target_number_and_seed ) ) ) ] )
+            target_area picture_address ( w, h ) current_state
           ]
         ]
+        )
+
+target_area : Signal.Address Action  -> ( Int, Int ) -> Model -> Svg
+target_area picture_address ( w, h ) current_state = 
+    g [Svg.Events.onClick ( Signal.message picture_address ( ClickedRefresh ) )]
+      [
+        ( rect [ x "0", y "120",   width "120", height "120", rx "15", ry "15",  fill "green" ] []  )
+       ,( text' [ x "0", y "160", fontSize "55" ] [ text ( toString ( 1 + ( fst current_state.target_number_and_seed ) ) ) ] )
       ]
-      )
 
 cr30 xpos ypos n labelSize picture_address =
     g [Svg.Events.onClick ( Signal.message picture_address ( ClickedBall n ) )]
@@ -39,10 +48,10 @@ ten_circles picture_address current_state =
     in 
       List.indexedMap cx current_state.ball_locations
 
-justGUI_main = renderGUI picture.address initial_state
+justGUI_main = renderGUI picture.address ( 1200, 240 ) initial_state
 
 live_main: Signal Html
-live_main =  Signal.map ( view picture.address ) ( updatep picture.signal )
+live_main =  Signal.map2 ( view picture.address ) Window.dimensions ( updatep picture.signal )
 
 main = 
     live_main
@@ -52,7 +61,9 @@ type alias Position = { x:Int, y:Int}
 
 type alias Model = 
   { 
-      user_choice:Int
+      window_height:Int
+    , window_width:Int
+    , user_choice:Int
     , score: Int
     , rng  : Generator Int
     , target_number_and_seed : ( Int, Seed )
@@ -72,9 +83,9 @@ shift_ball_left ball = { ball | x = ball.x - 100 }
 
 
 initial_state: Model
-initial_state = { user_choice = 0, score = 0, rng = int 0 9, target_number_and_seed = ( 1,  initialSeed 314 ), ball_locations = resetPositions ( List.repeat 10 {x=0,y=0} ) }
+initial_state = {  window_width = 0, window_height = 0,  user_choice = 0, score = 0, rng = int 0 9, target_number_and_seed = ( 1,  initialSeed 314 ), ball_locations = resetPositions ( List.repeat 10 {x=0,y=0} ) }
 
-type Action = ClickRed | ClickGreen | Reset | ClickedBall Int
+type Action = ClickedRefresh | ClickGreen | Reset | ClickedBall Int
 
 picture : Signal.Mailbox Action 
 picture = Signal.mailbox ClickGreen
@@ -85,7 +96,7 @@ updatep actions  = Signal.foldp update initial_state actions
 update : Action -> Model -> Model
 update action current_state =
  case action of
-  ClickRed   -> 
+  ClickedRefresh   -> 
     { current_state | 
         target_number_and_seed = generate current_state.rng ( snd current_state.target_number_and_seed )
       , user_choice = 0
@@ -106,10 +117,10 @@ update action current_state =
         { current_state | user_choice = ( index +  1 ), score = current_state.score - 1 }
 
 
-view : Signal.Address Action -> Model -> Html
-view address current_state =
+view : Signal.Address Action -> (Int, Int ) -> Model -> Html
+view address ( w, h ) current_state =
   div []
   [
-     div [] [ renderGUI picture.address current_state  ]
+     div [] [ renderGUI picture.address ( w, h ) current_state  ]
    , div[ Html.Events.onClick address Reset ] [ Html.text (toString current_state ) ]
   ]
