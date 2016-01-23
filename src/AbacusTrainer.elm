@@ -132,7 +132,7 @@ view address (w, h) current_state =
 
 
 renderGUI : Signal.Address Action  -> (Int, Int) -> Model -> Html.Html
-renderGUI picture_address (w, h) current_state =
+renderGUI address_of_actions_mailbox (w, h) current_state =
     let
       boardWidth  = Basics.min 1200 w |> toString
       boardHeight = Basics.min 240 h |> toString
@@ -144,16 +144,16 @@ renderGUI picture_address (w, h) current_state =
         , fill "lightGray"
         ]
         (List.concat
-          [ (ten_circles picture_address current_state)
-          , [ target_area picture_address (w, h) current_state ]
+          [ (ten_circles address_of_actions_mailbox current_state)
+          , [ target_area address_of_actions_mailbox (w, h) current_state ]
           ]
         )
 
 
 
 target_area : Signal.Address Action  -> (Int, Int) -> Model -> Svg
-target_area picture_address (w, h) current_state =
-    g [ Svg.Events.onClick (Signal.message picture_address ClickedRefresh) ]
+target_area address_of_actions_mailbox (w, h) current_state =
+    g [ Svg.Events.onClick (Signal.message address_of_actions_mailbox ClickedRefresh) ]
       [ rect
           [ x "0"
           , y "120"
@@ -188,9 +188,9 @@ target_area picture_address (w, h) current_state =
       ]
 
 
-cr30 xpos ypos n labelSize picture_address =
+cr30 xpos ypos n labelSize address_of_actions_mailbox =
     g
-      [ Svg.Events.onClick (Signal.message picture_address (ClickedBall n) )]
+      [ Svg.Events.onClick (Signal.message address_of_actions_mailbox (ClickedBall n) )]
       [ circle
           [ cx xpos
           , cy ypos
@@ -209,10 +209,10 @@ cr30 xpos ypos n labelSize picture_address =
 
 
 ten_circles : Signal.Address Action -> Model -> List Svg
-ten_circles picture_address current_state =
+ten_circles address_of_actions_mailbox current_state =
     let
       labelSize = Basics.max 0 (30 - current_state.score)
-      cx n ball = cr30 (ball.x |> toString) (ball.y |> toString) n (labelSize |> toString) picture_address
+      cx n ball = cr30 (ball.x |> toString) (ball.y |> toString) n (labelSize |> toString) address_of_actions_mailbox
     in
       List.indexedMap cx current_state.ball_locations
 
