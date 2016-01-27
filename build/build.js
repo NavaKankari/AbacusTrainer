@@ -10,4 +10,4 @@ rm('-Rf', directories.target);
 
 cd(directories.build);
 
-exec('elm-make ' + directories.source + '/AbacusTrainer.elm' + ' --output ' + directories.target + '/index.html' );
+exec('elm-make ' + directories.source + '/Main.elm' + ' --output ' + directories.target + '/index.html' );

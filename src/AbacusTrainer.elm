@@ -1,3 +1,5 @@
+module AbacusTrainer (Model, Action, init, effective_update, view) where
+
 import Html exposing (div, li, ol, Html)
 import Html.Events exposing (onClick)
 import Svg exposing (..)
@@ -6,10 +8,18 @@ import Svg.Events exposing (..)
 import Color exposing (..)
 import Random exposing (..)
 import Window
+
+import Easing exposing (ease, easeOutBounce, float)
+import Effects exposing (Effects)
+import Time exposing (Time, second)
 --import Task
 --import StartApp.Simple exposing( start )
 
 --MODEL
+
+
+type alias AnimationState =
+    Maybe { prevClockTime : Time, elapsedTime : Time }
 
 type alias Model =
   { window_height: Int
@@ -20,6 +30,9 @@ type alias Model =
   , target_number_and_seed : (Int, Seed)
   , ball_locations : List Position
   , needs_refresh : Bool
+  , angle         : Float
+  , x_offset      : Int
+  , animationState : AnimationState
   }
 
 
@@ -28,20 +41,34 @@ type alias Position = { x:Int, y:Int }
 
 initial_state: Model
 initial_state =
-  { window_height = 0
-  , window_width = 0
-  , user_choice = 0
-  , score = 0
-  , rng = int 0 9
+  { window_height          = 0
+  , window_width           = 0
+  , user_choice            = 0
+  , score                  = 0
+  , rng                    = int 0 9
   , target_number_and_seed = (1,  initialSeed 314)
-  , ball_locations = resetPositions (List.repeat 10 {x = 0, y = 0})
-  , needs_refresh = False
+  , ball_locations         = resetPositions (List.repeat 10 {x = 0, y = 0})
+  , needs_refresh          = False
+  , angle                  = 0
+  , x_offset               = 0
+  , animationState         = Nothing
   }
 
 
+init : ( Model, Effects Action)
+init =
+  ( initial_state
+  , Effects.none
+  )
+
+
+
+rotateStep = 360
+duration = second
+
 --UPDATE
 
-type Action = ClickedRefresh | Reset | ClickedBall Int
+type Action = ClickedRefresh | Reset | ClickedBall Int | Tick Time
 
 
 update : Action -> Model -> Model
@@ -79,7 +106,65 @@ update action current_state =
             }
         else
            current_state
+    Tick _ ->
+      current_state
           
+effective_update : Action -> Model -> (Model, Effects Action)
+effective_update action current_state =
+  case action of
+    ClickedRefresh ->
+      case current_state.animationState of
+        Nothing ->
+          ( current_state, Effects.tick Tick )
+
+        Just _ ->
+          ( update action current_state, Effects.none )
+
+    Reset ->
+      case current_state.animationState of
+        Nothing ->
+          ( current_state, Effects.tick Tick )
+
+        Just _ ->
+          ( update action current_state, Effects.none )
+
+    ClickedBall index ->
+      case current_state.animationState of
+        Nothing ->
+          ( current_state, Effects.tick Tick )
+
+        Just _ ->
+          ( update action current_state, Effects.none )
+          
+
+    Tick clockTime ->
+      let
+        newElapsedTime =
+          case current_state.animationState of
+            Nothing ->
+              0
+
+            Just {elapsedTime, prevClockTime} ->
+              elapsedTime + (clockTime - prevClockTime)
+      in
+        if newElapsedTime > duration then
+          ( 
+            { current_state
+              | angle          = current_state.angle + rotateStep
+              , x_offset       = current_state.x_offset + rotateStep
+              , animationState = Nothing  
+            }
+            , Effects.none
+          )
+        else
+          ( 
+            { current_state
+              | angle          = current_state.angle
+              , x_offset       = current_state.x_offset
+              , animationState = Just { elapsedTime = newElapsedTime, prevClockTime = clockTime }
+            }
+            , Effects.tick Tick
+          )
 
 
 resetBallLocation : Int -> Position -> Position
@@ -96,16 +181,29 @@ shift_ball_left : Position -> Position
 shift_ball_left ball =
   { ball | x = ball.x - 100 }
 
+get_target : Model -> Int
+get_target current_state =
+  (1 + fst current_state.target_number_and_seed)
 
 --VIEW
 
+toOffset : AnimationState -> Float
+toOffset animationState =
+  case animationState of
+    Nothing ->
+      0
+
+    Just {elapsedTime} ->
+      ease easeOutBounce Easing.float 0 rotateStep duration elapsedTime
+
+
 view : Signal.Address Action -> (Int, Int) -> Model -> Html
-view address (w, h) current_state =
+view address_of_actions_mailbox (w, h) current_state =
   div
     []
     [ div
         []
-        [ renderGUI actions.address (w, h) current_state ]
+        [ renderGUI address_of_actions_mailbox (w, h) current_state ]
     , div
         []
         [ ol
@@ -146,6 +244,7 @@ renderGUI address_of_actions_mailbox (w, h) current_state =
         (List.concat
           [ (ten_circles address_of_actions_mailbox current_state)
           , [ target_area address_of_actions_mailbox (w, h) current_state ]
+          , [ score_area  address_of_actions_mailbox (w, h) current_state ]
           ]
         )
 
@@ -153,7 +252,18 @@ renderGUI address_of_actions_mailbox (w, h) current_state =
 
 target_area : Signal.Address Action  -> (Int, Int) -> Model -> Svg
 target_area address_of_actions_mailbox (w, h) current_state =
-    g [ Svg.Events.onClick (Signal.message address_of_actions_mailbox ClickedRefresh) ]
+  let
+    angle    = current_state.angle    + toOffset current_state.animationState
+    x_offset = ( 
+                  toFloat current_state.x_offset 
+                + 20
+                --+ toOffset current_state.animationState 
+                --- 100 
+               ) |> round
+  in
+    g [ transform ("rotate(" ++ toString angle ++ ")")
+      , Svg.Events.onClick (Signal.message address_of_actions_mailbox ClickedRefresh) 
+      ]
       [ rect
           [ x "0"
           , y "120"
@@ -169,23 +279,28 @@ target_area address_of_actions_mailbox (w, h) current_state =
           , y "160"
           , fontSize "55"
           ]
-          [ text (toString (1 + fst current_state.target_number_and_seed))]
-      , rect
-          [ x "750"
-          , y "120"
-          , width "120"
-          , height "120"
-          , rx "15"
-          , ry "15"
-          , fill "lightBlue"
-          ]
-          []
-      , text'
-          [ x "750"
-          , y "160"
-          , fontSize "55" ]
-          [ text (toString ( current_state.score)) ]
+          [ text (toString (get_target current_state ) )]
       ]
+
+score_area : Signal.Address Action  -> (Int, Int) -> Model -> Svg
+score_area address_of_actions_mailbox (w, h) current_state =
+    g [ ]
+    [ rect
+        [ x "750"
+        , y "120"
+        , width "120"
+        , height "120"
+        , rx "15"
+        , ry "15"
+        , fill "lightBlue"
+        ]
+        []
+    , text'
+        [ x "750"
+        , y "160"
+        , fontSize "55" ]
+        [ text (toString ( current_state.score)) ]
+    ]
 
 
 cr30 xpos ypos n labelSize address_of_actions_mailbox =
@@ -219,17 +334,17 @@ ten_circles address_of_actions_mailbox current_state =
 
 --SIGNALS
 
-actions : Signal.Mailbox Action
-actions = Signal.mailbox Reset
+--actions : Signal.Mailbox Action
+--actions = Signal.mailbox Reset
 
 
 --WIRING
 
-model : Signal Action -> Signal Model
-model actions = Signal.foldp update initial_state actions
+--model : Signal Action -> Signal ( Model, Effects Action )
+--model actions = Signal.foldp effective_update initial_state actions
 
-main: Signal Html
-main =  Signal.map2 (view actions.address) Window.dimensions (model actions.signal)
+--main: Signal Html
+--main =  Signal.map2 (view actions.address) Window.dimensions (model actions.signal)
 
 
 --justGUI_main = renderGUI actions.address ( 1200, 240 ) initial_state
