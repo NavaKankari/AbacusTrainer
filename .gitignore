@@ -1,3 +1,7 @@
 target
 build/elm-stuff
+src/elm-stuff
+src/elm-package.json
+src/*Main.elm
+src/elm.js
 
