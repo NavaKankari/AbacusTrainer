@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<svg width="120" height="120"  viewBox="0 0 120 120"
+     xmlns="http://www.w3.org/2000/svg" version="1.1"
+     xmlns:xlink="http://www.w3.org/1999/xlink" >
+     <path d="M10,10 L110,10 Z"
+              stroke="lightgrey" stroke-width="2" 
+              fill="none" id="theMotionPath"/>
+    <g>
+        <!-- Draw the outline of the motion path in grey, along
+             with 2 small circles at key points 
+        <path d="M110,10 A120,120 -45 0,1 10 10 A120,120 -45 0,1 110,10"  -->
+        
+        <circle cx="10" cy="10" r="3" fill="lightgrey"  />
+        <circle cx="110" cy="10" r="3" fill="lightgrey"  />
+
+        <!-- Here is a red circle which will be moved along the motion path. -->
+        <g>
+
+            <circle cx="" cy="" r="5" fill="red"> </circle>
+            <text    x=""  y="" > Hello </text>
+                            <!-- Define the motion path animation   "indefinite"> -->
+                <animateMotion dur="6s" repeatCount=1> 
+                   <mpath xlink:href="#theMotionPath"/>
+                </animateMotion>
+        </g>
+    </g>    
+
+    <g>
+        <!-- Draw the outline of the motion path in grey, along
+             with 2 small circles at key points 
+        <path d="M110,10 A120,120 -45 0,1 10 10 A120,120 -45 0,1 110,10"  -->
+        <path d="M10,20 L110,20 Z"
+              stroke="lightgrey" stroke-width="2" 
+              fill="none" id="theMotionPath2"/>
+        <circle cx="10" cy="20" r="3" fill="lightgrey"  />
+        <circle cx="110" cy="20" r="3" fill="lightgrey"  />
+
+        <!-- Here is a red circle which will be moved along the motion path. -->
+        <circle cx="" cy="" r="5" fill="green">
+
+            <!-- Define the motion path animation   "indefinite"> -->
+            <animateMotion dur="3s" repeatCount=1> 
+               <mpath xlink:href="#theMotionPath2"/>
+            </animateMotion>
+        </circle>
+
+
+    </g>   
+
+
+</svg>
